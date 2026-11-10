@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Booking Saga | Flow Tester</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1020;
+      color: #e8ecf7;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      --muted: #9aa6bd;
+      --panel: #121a2d;
+      --line: #26334c;
+      --accent: #8b9cff;
+      --green: #6de0ae;
+      --red: #ff8291;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% -20%, #26345b, transparent 55%), #0b1020; }
+    main { width: min(1050px, 100% - 32px); margin: 0 auto; padding: 48px 0 64px; }
+    header { margin-bottom: 28px; }
+    .eyebrow { color: var(--accent); font-size: .75rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 10px 0; font-size: clamp(2rem, 6vw, 3.2rem); letter-spacing: -.045em; }
+    .intro, .muted { color: var(--muted); line-height: 1.65; }
+    .intro { max-width: 700px; margin: 0; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 95%, transparent); border-radius: 16px; padding: 22px; box-shadow: 0 18px 50px #0002; }
+    h2 { margin: 0 0 16px; font-size: 1.1rem; }
+    .scenarios { display: grid; gap: 10px; }
+    button, input, select { font: inherit; }
+    .scenario { display: flex; width: 100%; gap: 12px; align-items: flex-start; text-align: left; color: inherit; background: #0d1425; border: 1px solid var(--line); border-radius: 12px; padding: 14px; cursor: pointer; }
+    .scenario:hover, .scenario.selected { border-color: var(--accent); background: #17213a; }
+    .scenario .icon { font-size: 1.2rem; }
+    .scenario strong, .scenario small { display: block; }
+    .scenario small { margin-top: 4px; color: var(--muted); line-height: 1.4; }
+    form { display: grid; gap: 14px; }
+    label { display: grid; gap: 7px; color: var(--muted); font-size: .85rem; }
+    input, select { width: 100%; color: #e8ecf7; border: 1px solid var(--line); background: #0b1222; border-radius: 9px; padding: 11px 12px; }
+    input:focus, select:focus { outline: 2px solid #8b9cff66; border-color: var(--accent); }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .submit { color: #0b1020; font-weight: 750; border: 0; border-radius: 10px; padding: 13px 16px; background: var(--accent); cursor: pointer; }
+    .submit:hover { filter: brightness(1.08); }
+    .submit:disabled { opacity: .55; cursor: wait; }
+    .hint { margin: 0; min-height: 42px; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+    .result { margin-top: 18px; }
+    .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 11px; padding: 18px; text-align: center; }
+    .result-card { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-top: 10px; background: #0d1425; }
+    .result-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .badge { border-radius: 999px; padding: 4px 9px; font-size: .72rem; font-weight: 800; letter-spacing: .04em; background: #26334c; }
+    .badge.CONFIRMED { color: var(--green); background: #12392e; }
+    .badge.FAILED, .badge.ERROR { color: var(--red); background: #421f2c; }
+    .badge.PENDING, .badge.CHECKING { color: #f3cf79; background: #3c321b; }
+    code { color: #c5ccff; overflow-wrap: anywhere; }
+    .path { margin: 12px 0 0; color: var(--muted); font-size: .85rem; line-height: 1.55; }
+    .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 16px 0 0; }
+    .step { border: 1px solid var(--line); color: var(--muted); border-radius: 7px; font-size: .73rem; padding: 6px 8px; }
+    .arrow { color: #687694; font-size: .8rem; }
+    .footnote { margin: 16px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+    @media (max-width: 760px) { main { padding-top: 30px; } .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 420px) { .fields { grid-template-columns: 1fr; } .panel { padding: 17px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Saga orchestration · local demo</div>
+    <h1>Movie booking flow tester</h1>
+    <p class="intro">Run a booking through the real Kafka-backed services. Choose a scenario, submit it, and watch the persisted booking move from pending to its final state.</p>
+  </header>
+
+  <div class="layout">
+    <section class="panel" aria-labelledby="scenario-title">
+      <h2 id="scenario-title">1. Choose a scenario</h2>
+      <div class="scenarios">
+        <button class="scenario selected" type="button" data-scenario="success">
+          <span class="icon">✓</span><span><strong>Successful booking</strong><small>Available seat and payment amount at or below 2000.</small></span>
+        </button>
+        <button class="scenario" type="button" data-scenario="payment">
+          <span class="icon">↩</span><span><strong>Payment failure + rollback</strong><small>Seat is locked, payment fails above 2000, and the seat is released.</small></span>
+        </button>
+        <button class="scenario" type="button" data-scenario="unavailable">
+          <span class="icon">×</span><span><strong>Unavailable seat</strong><small>Reservation fails before payment; booking ends as failed.</small></span>
+        </button>
+      </div>
+      <div class="flow" aria-label="Saga flow">
+        <span class="step">Booking</span><span class="arrow">→</span>
+        <span class="step">Seat inventory</span><span class="arrow">→</span>
+        <span class="step">Payment</span><span class="arrow">→</span>
+        <span class="step">Confirm / compensate</span>
+      </div>
+      <p class="footnote">This page submits real requests. Success locks the chosen seat; the payment-failure path releases it. The unavailable-seat example uses seeded reserved seat A4.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="request-title">
+      <h2 id="request-title">2. Review and submit</h2>
+      <form id="booking-form">
+        <label>Show ID
+          <input id="show-id" value="SHOW_101" required>
+        </label>
+        <div class="fields">
+          <label>Seat
+            <select id="seat-id">
+              <option>A1</option><option>A2</option><option>A3</option><option>A4</option><option>A5</option>
+            </select>
+          </label>
+          <label>Amount
+            <input id="amount" type="number" min="0" value="1200" required>
+          </label>
+        </div>
+        <label>User ID
+          <input id="user-id" value="saga-ui-user" required>
+        </label>
+        <p class="hint" id="scenario-hint">A1 is initially available. Amounts up to 2000 simulate successful payment.</p>
+        <button class="submit" id="submit-button" type="submit">Start booking saga</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="panel result" aria-labelledby="result-title">
+    <h2 id="result-title">3. Live result</h2>
+    <div id="results" aria-live="polite"><div class="empty">Your booking results will appear here.</div></div>
+  </section>
+  <p class="footnote">The HTTP response only means the saga was started. This page polls the booking service through the orchestrator until it sees CONFIRMED or FAILED. It requires the complete Docker Compose stack.</p>
+</main>
+<script>
+  const form = document.querySelector("#booking-form");
+  const results = document.querySelector("#results");
+  const submitButton = document.querySelector("#submit-button");
+  const presets = {
+    success: { seat: "A1", amount: 1200, hint: "A1 is initially available. Amounts up to 2000 simulate successful payment." },
+    payment: { seat: "A2", amount: 2501, hint: "A2 is initially available. Payment fails above 2000 and the seat should be released." },
+    unavailable: { seat: "A4", amount: 1000, hint: "A4 is seeded as already reserved. Seat reservation should fail before payment." }
+  };
+  let selectedScenario = "success";
+
+  document.querySelectorAll(".scenario").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedScenario = button.dataset.scenario;
+      document.querySelectorAll(".scenario").forEach((item) => item.classList.toggle("selected", item === button));
+      document.querySelector("#seat-id").value = presets[selectedScenario].seat;
+      document.querySelector("#amount").value = presets[selectedScenario].amount;
+      document.querySelector("#scenario-hint").textContent = presets[selectedScenario].hint;
+    });
+  });
+
+  function addResult(bookingId, scenario) {
+    if (results.querySelector(".empty")) results.replaceChildren();
+    const card = document.createElement("article");
+    card.className = "result-card";
+    const top = document.createElement("div");
+    top.className = "result-top";
+    const label = document.createElement("strong");
+    label.textContent = scenario === "success" ? "Successful booking" :
+      scenario === "payment" ? "Payment failure + rollback" : "Unavailable seat";
+    const badge = document.createElement("span");
+    badge.className = "badge CHECKING";
+    badge.textContent = "CHECKING";
+    top.append(label, badge);
+    const id = document.createElement("p");
+    id.className = "path";
+    id.textContent = "Booking ID: ";
+    const code = document.createElement("code");
+    code.textContent = bookingId;
+    id.append(code);
+    const path = document.createElement("p");
+    path.className = "path";
+    path.textContent = "Waiting for booking-service status…";
+    card.append(top, id, path);
+    results.prepend(card);
+    return { badge, path };
+  }
+
+  async function pollBooking(bookingId, scenario, output) {
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      try {
+        const response = await fetch(`/orchestrator/bookings/${encodeURIComponent(bookingId)}`);
+        if (response.status === 404) continue;
+        if (!response.ok) throw new Error(`Status check returned HTTP ${response.status}`);
+        const booking = await response.json();
+        output.badge.textContent = booking.status;
+        output.badge.className = `badge ${booking.status}`;
+        if (booking.status === "CONFIRMED") {
+          output.path.textContent = `Booking confirmed · ${booking.showId} · seat ${booking.seatIds.join(", ")} · amount ${booking.amount}.`;
+          return;
+        }
+        if (booking.status === "FAILED") {
+          output.path.textContent = scenario === "payment"
+            ? `Payment failed and the booking was marked FAILED. The saga sent a compensation command to release seat ${booking.seatIds.join(", ")}.`
+            : scenario === "unavailable"
+              ? `Seat reservation failed; no payment was requested. Booking marked FAILED for seat ${booking.seatIds.join(", ")}.`
+              : "Booking marked FAILED. Check the service logs for the failure reason.";
+          return;
+        }
+        output.path.textContent = `Saga in progress · current booking status: ${booking.status}.`;
+      } catch (error) {
+        output.badge.textContent = "ERROR";
+        output.badge.className = "badge ERROR";
+        output.path.textContent = `Could not read booking status: ${error.message}`;
+        return;
+      }
+    }
+    output.badge.textContent = "PENDING";
+    output.badge.className = "badge PENDING";
+    output.path.textContent = "No final status received within 45 seconds. The saga may still be processing; check the Compose logs.";
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    submitButton.disabled = true;
+    submitButton.textContent = "Starting saga…";
+    const request = {
+      reservationId: `saga-ui-${Date.now()}`,
+      showId: document.querySelector("#show-id").value.trim(),
+      seatIds: [document.querySelector("#seat-id").value],
+      userId: document.querySelector("#user-id").value.trim(),
+      timestamp: new Date().toISOString(),
+      amount: Number(document.querySelector("#amount").value)
+    };
+    try {
+      const response = await fetch("/orchestrator/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request)
+      });
+      if (!response.ok) {
+        const detail = (await response.text()).trim();
+        const message = response.status === 404
+          ? "The running orchestrator does not have the booking endpoint. Rebuild and restart the stack with `docker compose up --build -d --wait`, then reload this page."
+          : `Booking request returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+        throw new Error(message);
+      }
+      const bookingId = (await response.text()).trim();
+      if (!bookingId) throw new Error("The orchestrator returned an empty booking ID");
+      const output = addResult(bookingId, selectedScenario);
+      pollBooking(bookingId, selectedScenario, output);
+    } catch (error) {
+      const output = addResult("Request was not accepted", selectedScenario);
+      output.badge.textContent = "ERROR";
+      output.badge.className = "badge ERROR";
+      output.path.textContent = error.message;
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Start booking saga";
+    }
+  });
+</script>
+</body>
+</html>

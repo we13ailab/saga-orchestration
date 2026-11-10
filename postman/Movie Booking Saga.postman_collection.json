@@ -1,0 +1,160 @@
+{
+  "info": {
+    "_postman_id": "d8126973-f823-4a43-9a14-c269c0e0df58",
+    "name": "Movie Booking Saga",
+    "description": "Exercise success, payment compensation, and unavailable-seat paths. Requires the local services, Kafka, MySQL, and the sample seat inventory from the repository README.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8181"
+    }
+  ],
+  "item": [
+    {
+      "name": "Successful booking (payment <= 2000)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservationId\": \"postman-success\",\n  \"showId\": \"SHOW_101\",\n  \"seatIds\": [\"A1\"],\n  \"userId\": \"postman-user\",\n  \"timestamp\": \"2026-11-10T09:00:00Z\",\n  \"amount\": 1200\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orchestrator/bookings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "orchestrator",
+            "bookings"
+          ]
+        },
+        "description": "Uses the seeded available seat SHOW_101/A1. The response is a booking ID; allow the asynchronous saga to complete and verify its eventual CONFIRMED status."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Booking accepted', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Returns a booking ID', function () {",
+              "  pm.expect(pm.response.text().trim()).to.not.be.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment failure and seat rollback (payment > 2000)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservationId\": \"postman-payment-failure\",\n  \"showId\": \"SHOW_101\",\n  \"seatIds\": [\"A2\"],\n  \"userId\": \"postman-user\",\n  \"timestamp\": \"2026-11-10T09:00:00Z\",\n  \"amount\": 2501\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orchestrator/bookings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "orchestrator",
+            "bookings"
+          ]
+        },
+        "description": "Uses seeded available seat SHOW_101/A2. The simulated payment fails above 2000; the orchestrator should release the seat and the booking should eventually become FAILED."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Booking accepted', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Returns a booking ID', function () {",
+              "  pm.expect(pm.response.text().trim()).to.not.be.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unavailable seat (no payment)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reservationId\": \"postman-seat-conflict\",\n  \"showId\": \"SHOW_101\",\n  \"seatIds\": [\"A4\"],\n  \"userId\": \"postman-user\",\n  \"timestamp\": \"2026-11-10T09:00:00Z\",\n  \"amount\": 1000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/orchestrator/bookings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "orchestrator",
+            "bookings"
+          ]
+        },
+        "description": "Uses seeded reserved seat SHOW_101/A4. The booking should eventually become FAILED and no payment command should be sent."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Booking accepted', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Returns a booking ID', function () {",
+              "  pm.expect(pm.response.text().trim()).to.not.be.empty;",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
